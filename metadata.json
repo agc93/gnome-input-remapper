@@ -1,0 +1,10 @@
+{
+  "name": "Input Remapper Extension",
+  "description": "Shows the currently selected Input Remapper profiles in the GNOME shell",
+  "uuid": "gnome-input-remapper@agc93.dev",
+  "url": "https://github.com/agc93/gnome-input-remapper",
+  "settings-schema": "org.gnome.shell.extensions.gnome-input-remapper",
+  "shell-version": [
+    "48"
+  ]
+}
