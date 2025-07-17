@@ -3,16 +3,82 @@ import Gio from 'gi://Gio';
 import St from 'gi://St';
 import GObject from 'gi://GObject';
 import Clutter from 'gi://Clutter';
-import Meta from 'gi://Meta';
-import Shell from 'gi://Shell';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {default as paths} from './utils.js';
-import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import FileHelpers, {default as paths} from './utils.js';
+import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Util from 'resource:///org/gnome/shell/misc/util.js'
+import {PresetMenuItem} from './components.js'
+import * as DBus from './dbus.js';
+import {getInputRemapperProxy} from "./dbus.js";
+
 type ImplPopupMenu =  PopupMenu.PopupMenu<PopupMenu.PopupMenu.SignalMap>;
-import {PopupSubMenuMenuItem} from "@girs/gnome-shell/ui/popupMenu";
+
+export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
+    private _deviceState?: string;
+    static {
+        // GObject.registerClass({Signals: {updated: {param_types: []}}}, DeviceSubMenu);
+        GObject.registerClass(this);
+    }
+
+    get deviceName(): string {
+        return GLib.path_get_basename(this.deviceDirectory);
+    }
+
+    get deviceState(): string {
+        return this._deviceState ?? this.getDeviceState();
+    }
+
+    private deviceDirectory: string;
+    constructor(directory: string, presets: string[]) {
+        const dirName = GLib.path_get_basename(directory);
+        super(dirName, true);
+
+        this.deviceDirectory = directory;
+        const titleItem = this.getHeader();
+        this.menu.addMenuItem(titleItem);
+        this.setMenuIcon();
+
+    }
+
+    private getHeader(): PopupMenu.PopupBaseMenuItem {
+        const titleItem = new PopupMenu.PopupSeparatorMenuItem("State: ");
+        const labelEl = new St.Label({text: this.deviceState});
+        titleItem.actor.add_child(labelEl);
+        return titleItem;
+    }
+
+    private getDeviceState(): string {
+        const proxy = getInputRemapperProxy()
+        const state = proxy.get_stateSync(this.deviceName);
+        log(`got device state: ${state}`, state);
+        console.warn(state);
+        this._deviceState = state[0];
+        return this._deviceState;
+    }
+
+    private setLabel(): void {
+        const stateLabel = new St.Label({text: this.deviceState});
+        this.actor.insert_child_at_index(stateLabel, 4);
+    }
+
+    private setMenuIcon(): void {
+        const deviceState = this.deviceState;
+        const iconStr =
+            deviceState == "UNKNOWN"
+                ? 'dialog-question-symbolic'
+                : deviceState == "STOPPED"
+                    ? 'media-playback-stop-symbolic'
+                    : deviceState == "RUNNING"
+                        ? 'media-playback-start-symbolic'
+                        : 'dialog-error-symbolic';
+        // @ts-ignore
+        this.icon.gicon = Gio.icon_new_for_string(iconStr);
+    }
+}
+
+
 
 export class DeviceMenuItem extends PopupMenu.PopupBaseMenuItem {
     static {
@@ -36,7 +102,7 @@ export class DeviceMenuItem extends PopupMenu.PopupBaseMenuItem {
     }
 
     private onOpenDeviceDirectory() {
-        Gio.app_info_launch_default_for_uri(this.deviceDirectory, null)
+        paths.openDirectory(this.deviceDirectory);
     }
 
     override activate(event: Clutter.Event) {
@@ -46,32 +112,57 @@ export class DeviceMenuItem extends PopupMenu.PopupBaseMenuItem {
 }
 
 export class DevicesMenu extends PanelMenu.Button {
+    private _menuLayout: St.BoxLayout;
+    private _menu: ImplPopupMenu;
+    private _presetMenuItems: { [key: string]: PresetMenuItem };
 
     static {
         GObject.registerClass(this)
     }
 
     private _devices: any[];
+    private _groups: {[key: string]: DeviceSubMenu};
     constructor() {
         super(0.5, "Devices");
         this.setIcon();
 
         this._devices = [];
+        this._groups = {};
+        this._presetMenuItems = {};
+        this._menu = this.menu as ImplPopupMenu;
+        const menu = this.menu as ImplPopupMenu;
 
         const configFiles = new paths().getConfigFiles();
+
+        for (const [directory, files] of Object.entries(configFiles)) {
+
+            this.addMenuGroup(directory, files);
+
+        }
+
+        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
         for (const [directory, files] of Object.entries(configFiles)) {
 
             this.addDevice(directory, files);
 
         }
 
-        const menu = this.menu as ImplPopupMenu;
+        this._menuLayout = new St.BoxLayout({
+            vertical: false,
+            clip_to_allocation: true,
+            x_align: Clutter.ActorAlign.START,
+            y_align: Clutter.ActorAlign.CENTER,
+            reactive: true,
+            x_expand: true
+        });
+
 
         menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         menu.addAction("Open Config Directory", () => {
-            const path = new paths().getConfigPath();
-            Gio.app_info_launch_default_for_uri(path, null);
+            const path = FileHelpers.getConfigPath();
+            paths.openDirectory(path);
         });
 
         (this.menu as ImplPopupMenu).addAction("Open Input Remapper", () => {
@@ -108,7 +199,26 @@ export class DevicesMenu extends PanelMenu.Button {
         item.connect('notify::visible', () => this.updateMenuVisibility());
     }
 
+    private addMenuGroup(groupName: string, groupPresets: string[]) {
+        this._groups[groupName] = new DeviceSubMenu(groupName, groupPresets);
 
+        for (const preset of groupPresets) {
+            this.addPresetMenuItem(groupName, preset);
+        }
+
+        this._menu.addMenuItem(this._groups[groupName]);
+
+
+    }
+
+    private addPresetMenuItem(device: string, presetPath: string) {
+        const key = presetPath;
+        const presetName = GLib.path_get_basename(presetPath)
+        const presetMenuItem = new PresetMenuItem(key, presetName, device);
+        this._presetMenuItems[key] = presetMenuItem;
+        this._groups[device].menu.addMenuItem(presetMenuItem);
+
+    }
 
     populateMenu(menu: PopupMenu.PopupMenu<PopupMenu.PopupMenu.SignalMap>) {
         const configFiles = new paths().getConfigFiles();
@@ -136,6 +246,7 @@ export default class InputRemapperMenu extends Extension {
     private _indicator?: DevicesMenu;
 
     enable() {
+        // @ts-ignore
         this.gsettings = this.getSettings();
         this.animationsEnabled = this.gsettings!.get_value('padding-inner').deepUnpack() ?? 8
 

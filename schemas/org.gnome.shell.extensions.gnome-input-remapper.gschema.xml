@@ -11,5 +11,10 @@
             <summary>Animation</summary>
             <description>Enable animation</description>
         </key>
+        <key name="config-dir" type="s">
+            <default>"~/.config/input-remapper-2/"</default>
+            <summary>Configuration Directory</summary>
+            <description>Path to the Input Remapper configuration directory</description>
+        </key>
     </schema>
 </schemalist>

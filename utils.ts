@@ -2,7 +2,7 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
 export default class FileHelpers {
-    public getConfigPath(presetDir: boolean = false): string {
+    public static getConfigPath(presetDir: boolean = false): string {
         const homeDir = GLib.get_home_dir();
         const relPath = [homeDir, '.config', 'input-remapper-2'];
         return GLib.build_filenamev( presetDir ? [...relPath, 'presets'] : relPath );
@@ -41,7 +41,7 @@ export default class FileHelpers {
     }
 
     public getConfigDirectories(): string[] {
-        const configPath = this.getConfigPath(true);
+        const configPath = FileHelpers.getConfigPath(true);
         const configDir = Gio.File.new_for_path(configPath);
         const directories: string[] = [];
 
@@ -62,5 +62,20 @@ export default class FileHelpers {
         }
 
         return directories;
+    }
+
+    static openDirectory(dirPath: string): boolean {
+        try {
+            const launcher = new Gio.SubprocessLauncher({
+                flags: Gio.SubprocessFlags.NONE
+            });
+
+            // Use xdg-open which will use the default file manager
+            launcher.spawnv(['xdg-open', dirPath]);
+            return true;
+        } catch (error) {
+            logError(error as Error);
+            return false;
+        }
     }
 }

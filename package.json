@@ -17,7 +17,7 @@
   "sideEffects": false,
   "devDependencies": {
     "eslint": "^9.31.0",
-    "eslint-plugin-jsdoc": "^51.3.4",
+    "eslint-plugin-jsdoc": "^51.4.1",
     "typescript": "^5.8.3"
   },
   "dependencies": {
