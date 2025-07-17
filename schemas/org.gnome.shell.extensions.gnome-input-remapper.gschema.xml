@@ -6,10 +6,10 @@
             <summary>Inner padding</summary>
             <description>Padding</description>
         </key>
-        <key name="animate" type="b">
-            <default>true</default>
-            <summary>Animation</summary>
-            <description>Enable animation</description>
+        <key name="enable-preset-actions" type="b">
+            <default>false</default>
+            <summary>Quick Edit Preset</summary>
+            <description>Adds actions to quickly edit the preset configuration file.</description>
         </key>
         <key name="config-dir" type="s">
             <default>"~/.config/input-remapper-2/"</default>

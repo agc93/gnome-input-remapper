@@ -13,7 +13,7 @@ import {PresetMenuItem} from './components.js'
 import * as DBus from './dbus.js';
 import {getInputRemapperProxy} from "./dbus.js";
 
-type ImplPopupMenu =  PopupMenu.PopupMenu<PopupMenu.PopupMenu.SignalMap>;
+type ImplPopupMenu =  PopupMenu.PopupMenu;
 
 export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
     private _deviceState?: string;
@@ -79,7 +79,7 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
 }
 
 
-
+/** @deprecated **/
 export class DeviceMenuItem extends PopupMenu.PopupBaseMenuItem {
     static {
         GObject.registerClass(this)
@@ -115,18 +115,28 @@ export class DevicesMenu extends PanelMenu.Button {
     private _menuLayout: St.BoxLayout;
     private _menu: ImplPopupMenu;
     private _presetMenuItems: { [key: string]: PresetMenuItem };
+    private _menuStateChangeId: any;
+    private _extension: InputRemapperExtension;
+    private _groups: {[key: string]: DeviceSubMenu};
 
     static {
         GObject.registerClass(this)
     }
 
-    private _devices: any[];
-    private _groups: {[key: string]: DeviceSubMenu};
-    constructor() {
+    private setIcon() {
+        const icon = new St.Icon({
+            icon_name: 'input-keyboard-symbolic',
+            style_class: 'system-status-icon',
+        });
+        this.add_child(icon);
+    }
+
+
+    constructor(extension: InputRemapperExtension) {
         super(0.5, "Devices");
         this.setIcon();
+        this._extension = extension;
 
-        this._devices = [];
         this._groups = {};
         this._presetMenuItems = {};
         this._menu = this.menu as ImplPopupMenu;
@@ -136,17 +146,11 @@ export class DevicesMenu extends PanelMenu.Button {
 
         for (const [directory, files] of Object.entries(configFiles)) {
 
-            this.addMenuGroup(directory, files);
+            this.addMenuForDevice(directory, files);
 
         }
 
         menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-        for (const [directory, files] of Object.entries(configFiles)) {
-
-            this.addDevice(directory, files);
-
-        }
 
         this._menuLayout = new St.BoxLayout({
             vertical: false,
@@ -158,9 +162,15 @@ export class DevicesMenu extends PanelMenu.Button {
         });
 
 
-        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this.addCommonMenuEntries();
 
-        menu.addAction("Open Config Directory", () => {
+
+    }
+
+    private addCommonMenuEntries() {
+        this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        this._menu.addAction("Open Config Directory", () => {
             const path = FileHelpers.getConfigPath();
             paths.openDirectory(path);
         });
@@ -169,37 +179,23 @@ export class DevicesMenu extends PanelMenu.Button {
             // @ts-ignore
             Util.spawn(["input-remapper-gtk"]);
         });
-
-        this.updateMenuVisibility();
-
     }
 
-    private setIcon() {
-        const icon = new St.Icon({
-            icon_name: 'input-keyboard-symbolic',
-            style_class: 'system-status-icon',
-        });
-        this.add_child(icon);
-    }
+    // private addEvents():void {
+    //     this._menuStateChangeId = this._menu.connect('open-state-changed', (self, isMenuOpen) => {
+    //     if (isMenuOpen) {
+    //         // make sure timer fires at next full interval
+    //         this._updateTimeChanged();
+    //
+    //         // refresh sensors now
+    //         this._querySensors();
+    //     }
+    // });
+    // }
 
-    private updateMenuVisibility() {
-        // if (this._devices.filter(device => device.visible).length > 0) {
-        //     this.show();
-        // } else {
-        //     this.hide();
-        // }
-        this.show();
-    }
 
-    private addDevice(devicePath: string, devicePresets: string[]) {
-        let item = new DeviceMenuItem(devicePath, devicePresets);
-        this._devices.unshift(item);
-        // @ts-ignore
-        this.menu.addMenuItem(item);
-        item.connect('notify::visible', () => this.updateMenuVisibility());
-    }
 
-    private addMenuGroup(groupName: string, groupPresets: string[]) {
+    private addMenuForDevice(groupName: string, groupPresets: string[]) {
         this._groups[groupName] = new DeviceSubMenu(groupName, groupPresets);
 
         for (const preset of groupPresets) {
@@ -207,39 +203,23 @@ export class DevicesMenu extends PanelMenu.Button {
         }
 
         this._menu.addMenuItem(this._groups[groupName]);
-
-
     }
 
     private addPresetMenuItem(device: string, presetPath: string) {
         const key = presetPath;
         const presetName = GLib.path_get_basename(presetPath)
-        const presetMenuItem = new PresetMenuItem(key, presetName, device);
+        let enableActions = this._extension.getSettings().get_value('enable-preset-actions').deepUnpack() ?? false;
+        const presetMenuItem = new PresetMenuItem(key, presetName, device, enableActions as boolean);
         this._presetMenuItems[key] = presetMenuItem;
         this._groups[device].menu.addMenuItem(presetMenuItem);
-
     }
 
-    populateMenu(menu: PopupMenu.PopupMenu<PopupMenu.PopupMenu.SignalMap>) {
-        const configFiles = new paths().getConfigFiles();
-        for (const [directory, files] of Object.entries(configFiles)) {
-            const dirName = GLib.path_get_basename(directory);
-            const dirItem = new PopupMenu.PopupSubMenuMenuItem(dirName);
+    private addPresetFolderMenuItem(presetDirectory: string, presetName: string) {
 
-            for (const file of files) {
-                const fileName = GLib.path_get_basename(file);
-                const fileItem = new PopupMenu.PopupMenuItem(fileName);
-                dirItem.menu.addMenuItem(fileItem);
-            }
-
-            menu.addMenuItem(dirItem);
-        }
     }
-
-
 }
 
-export default class InputRemapperMenu extends Extension {
+export default class InputRemapperExtension extends Extension {
     gsettings?: Gio.Settings
     animationsEnabled: boolean = true
     button?: PanelMenu.Button
@@ -250,7 +230,7 @@ export default class InputRemapperMenu extends Extension {
         this.gsettings = this.getSettings();
         this.animationsEnabled = this.gsettings!.get_value('padding-inner').deepUnpack() ?? 8
 
-        this._indicator = new DevicesMenu();
+        this._indicator = new DevicesMenu(this);
         Main.panel.addToStatusArea(this.uuid, this._indicator);
 
     }

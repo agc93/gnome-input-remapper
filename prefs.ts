@@ -28,16 +28,16 @@ export default class GnomeRectanglePreferences extends ExtensionPreferences {
         configGroup.add(configPathInner);
 
         const animationGroup = new Adw.PreferencesGroup({
-            title: _('Animation'),
-            description: _('Configure move/resize animation'),
+            title: _('Interface'),
+            description: _('Configure the extension\'s look and feel'),
         });
         page.add(animationGroup);
 
-        const animationEnabled = new Adw.SwitchRow({
-            title: _('Enabled'),
-            subtitle: _('Wether to animate windows'),
+        const presetActionsEnabled = new Adw.SwitchRow({
+            title: _('Preset Actions'),
+            subtitle: _('Enable quickly editing preset configuration files.'),
         });
-        animationGroup.add(animationEnabled);
+        animationGroup.add(presetActionsEnabled);
 
         const paddingGroup = new Adw.PreferencesGroup({
             title: _('Paddings'),
@@ -58,7 +58,7 @@ export default class GnomeRectanglePreferences extends ExtensionPreferences {
 
         window.add(page)
 
-        this._settings!.bind('animate', animationEnabled, 'active', Gio.SettingsBindFlags.DEFAULT);
+        this._settings!.bind('enable-preset-actions', presetActionsEnabled, 'active', Gio.SettingsBindFlags.DEFAULT);
         this._settings!.bind('padding-inner', paddingInner, 'value', Gio.SettingsBindFlags.DEFAULT);
         this._settings!.bind('config-dir', configPathInner, 'text', Gio.SettingsBindFlags.DEFAULT);
 

@@ -1,0 +1,14 @@
+
+
+.preset-menu-item { spacing: 12px; }
+
+.preset-menu-item .button {
+    border-radius: 99px;
+    padding: 4px;
+    min-height: auto;
+}
+
+.preset-menu-item .pi-action-btn StIcon {
+    icon-size: 12px;
+    margin: 4px;
+}
