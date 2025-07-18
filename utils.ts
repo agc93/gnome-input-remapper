@@ -1,5 +1,9 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
+import {Source} from 'resource:///org/gnome/shell/ui/messageTray.js';
+import Util from "resource:///org/gnome/shell/misc/util.js";
 
 export default class FileHelpers {
     public static getConfigPath(presetDir: boolean = false): string {
@@ -77,5 +81,29 @@ export default class FileHelpers {
             logError(error as Error);
             return false;
         }
+    }
+
+    static runAfter(seconds: number, callback: () => void|boolean) {
+        return GLib.timeout_add(GLib.PRIORITY_DEFAULT, seconds*1000, () => {
+            const result = callback();
+            return result ? result : GLib.SOURCE_REMOVE;
+        }, null);
+    }
+}
+
+export const runAfter = FileHelpers.runAfter;
+
+export function openInputRemapperUi() {
+    try {
+        const launcher = new Gio.SubprocessLauncher({
+            flags: Gio.SubprocessFlags.NONE
+        });
+
+        // Use xdg-open which will use the default file manager
+        launcher.spawnv(['input-remapper-gtk']);
+        return true;
+    } catch (error) {
+        logError(error as Error);
+        return false;
     }
 }

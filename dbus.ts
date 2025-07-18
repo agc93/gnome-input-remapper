@@ -46,6 +46,9 @@ const interfaceXml = `
     </interface>
 </node>`;
 
+export function watchForMessages() {
+
+}
 
 export function getInputRemapperProxy(configDir?: string) {
     configDir ??= FileHelpers.getConfigPath();

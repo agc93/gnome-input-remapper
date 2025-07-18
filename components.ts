@@ -8,14 +8,27 @@ import * as DBus from './dbus.js';
 import {getInputRemapperProxy} from "./dbus.js";
 import FileHelpers from "./utils.js";
 
+export function getIconButton(icon: string, buttonClasses: string[] = [], iconClasses: string[] = []) {
+    const classes = ['button', 'action-btn', ...buttonClasses];
+    iconClasses = ['popup-menu-icon', ...iconClasses];
+    let ejectIcon = new St.Icon({
+        icon_name: icon,
+        style_class: iconClasses.join(' '),
+    });
+    let ejectButton = new St.Button({
+        child: ejectIcon,
+        style_class: classes.join(' '),
+    });
+    return ejectButton;
+}
+
 export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
-    private _running: boolean;
     private readonly _key: string;
     private readonly _labelEl: St.Label;
     private _proxy: (DBus.InputRemapperDbusApi & Gio.DBusProxy) | null = null;
     static {
         GObject.registerClass({Signals: {
-                'preset-start': { param_types: [Clutter.Event.$gtype] },
+                'preset-start': { param_types: [Clutter.Event.$gtype, GObject.TYPE_STRING] },
             }}, PresetMenuItem);
     }
 
@@ -28,9 +41,7 @@ export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
     }
 
     constructor(key: string, label: string, value: string, enableActions: boolean = false) {
-        super({style_class: 'preset-menu-item'});
-        this._running = false;
-        this._updateOrnament();
+        super({style_class: 'menu-item preset-menu-item'});
         log(`creating preset menu item: ${key}`)
 
         this._key = key;
@@ -76,14 +87,6 @@ export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
         this.add_child(ejectButton);
     }
 
-    private _updateOrnament() {
-        if (this._running) {
-            this.setOrnament(PopupMenu.Ornament.CHECK);
-        } else {
-            this.setOrnament(PopupMenu.Ornament.NONE);
-        }
-    }
-
     activate(event: Clutter.Event) {
         // super.activate(event);
         this.startPreset(event);
@@ -93,19 +96,13 @@ export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
         try {
             this._proxy = getInputRemapperProxy();
             const result = this._proxy.start_injectingSync(this.deviceName, this.presetName);
-            log(`got response: ${result}`);
+            // log(`got response: ${result}`);
             const state = this._proxy.get_stateSync(this.deviceName);
-            log(`got device state: ${state}`);
+            // log(`got device state: ${state}`);
             const presetStarted = result && (state.includes('RUNNING') || state.includes('STARTING'));
-            this.setActive(presetStarted);
-            if (presetStarted) this.emit('preset-start', event);
+            if (presetStarted) this.emit('preset-start', event, state[0]);
         } catch (e) {
             logError(e);
         }
-    }
-
-    setActive(active: boolean) {
-        this._running = active;
-        this._updateOrnament();
     }
 }
