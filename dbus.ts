@@ -88,6 +88,27 @@ export interface InputRemapperDbusApi {
     autoloadAsync(): Promise<void>;
 
     helloRemote(out: string, callback: (value: string, error: GLib.Error | null, fdList: Gio.UnixFDList | null) => void): void;
-    helloSync(out: string): string;
-    helloAsync(out: string): string;
+    helloSync(out: string): string[];
+    helloAsync(out: string): string[];
+}
+
+export const getBusWatcher = (
+    onRegistered: (connection: Gio.DBusConnection, name: string, owner: string) => void,
+    onUnregistered: (connection: Gio.DBusConnection, name: string) => void
+) => {
+    const watcherId = Gio.bus_watch_name(
+        Gio.BusType.SYSTEM,
+        'inputremapper.Control',
+        Gio.BusNameWatcherFlags.NONE,
+        onRegistered,
+        onUnregistered
+    );
+    return {
+        watcherId,
+        unwatch: () => Gio.bus_unwatch_name(watcherId),
+    }
+}
+
+export const unwatchBus = (watcherId: number) => {
+    Gio.bus_unwatch_name(watcherId);
 }

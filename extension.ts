@@ -11,7 +11,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Util from 'resource:///org/gnome/shell/misc/util.js'
 import {getIconButton, PresetMenuItem} from './components.js'
 import * as DBus from './dbus.js';
-import {getInputRemapperProxy} from "./dbus.js";
+import {getBusWatcher, getInputRemapperProxy} from "./dbus.js";
 import {NotificationManager} from "./notifications.js";
 
 type ImplPopupMenu =  PopupMenu.PopupMenu;
@@ -192,6 +192,15 @@ export class DevicesMenu extends PanelMenu.Button {
         this.add_child(icon);
     }
 
+    private getDaemonState(): boolean {
+        try {
+            const proxy = getInputRemapperProxy();
+            const state = proxy.helloSync("gnome-input-remapper");
+            return state[0] == "gnome-input-remapper";
+        } catch (e) {
+            return false;
+        }
+    }
 
     constructor(extension: InputRemapperExtension) {
         super(0.5, "Devices");
@@ -205,8 +214,6 @@ export class DevicesMenu extends PanelMenu.Button {
 
         this._addSettingChangedSignal('enable-preset-actions', () => {});
 
-        this.initializeMenu();
-
         this._menuLayout = new St.BoxLayout({
             vertical: false,
             clip_to_allocation: true,
@@ -216,9 +223,49 @@ export class DevicesMenu extends PanelMenu.Button {
             x_expand: true
         });
 
+        const disconnectEvent = () => {
+            if (this._menuStateChangeId) {
+                log(`disconnecting menu state change handler: ${this._menuStateChangeId}`);
+                this._menu.disconnect(this._menuStateChangeId);
+                this._menuStateChangeId = undefined;
+            }
+        }
 
-        // this.addCommonMenuEntries();
+        const watcher = getBusWatcher((conn, _, owner) => {
+            //service is running
+            log(`Input Remapper service is running as ${owner}`);
+                log('menu already configured, initializing enabled menu')
+                disconnectEvent();
+                this._menu.removeAll();
+                this.initializeMenuEnabled();
+        }, (conn, _) => {
+            //service is not running
+                log(`menu already configured, initializing disabled menu (${this._menuStateChangeId})`);
+                disconnectEvent();
+                this._menu.removeAll();
+                //TODO: we need to reset the menu back to a disabled state
+                this.addDisabledMenu();
+        })
 
+        const daemonState = this.getDaemonState();
+
+        log(`daemon state: ${daemonState}, menu: ${this._menu.length}`);
+
+        // if (daemonState) {
+        //     this.initializeMenuEnabled();
+        // } else {
+        //     const notif = new NotificationManager();
+        //     notif.showNotification(
+        //         `Input Remapper not running`,
+        //         `Input Remapper is not running. Please start it to use this extension.`,
+        //         false
+        //     );
+        //     this.addDisabledMenu();
+        // }
+    }
+
+    private initializeMenuEnabled() {
+        this.initializeMenu();
         this.populateMenu();
 
         // @ts-ignore
@@ -228,14 +275,19 @@ export class DevicesMenu extends PanelMenu.Button {
                 this.refreshDeviceStates();
             }
         });
-
-
+        log(`registered menu state change handler: ${this._menuStateChangeId}`);
     }
 
     private refreshDeviceStates() {
         for (const device of Object.entries(this._devices)) {
             device[1].reloadState();
         }
+    }
+
+    private addDisabledMenu() {
+        this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem("Disabled"));
+        const item = new PopupMenu.PopupMenuItem("Input Remapper is not running, or not installed!", {activate: false, reactive: false});
+        this._menu.addMenuItem(item);
     }
 
     private initializeMenu() {
