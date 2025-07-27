@@ -101,8 +101,3 @@ export class SettingsLoader {
 // function set_enum(key: string, val: number): boolean {
 //     return Settings.getSettings.set_enum(key, val);
 // }
-
-export function getConfigDir(settings: ExtensionSettings): string {
-    log(`getting config dir: ${settings.configDir}`);
-    return settings.configDir ?? FileHelpers.getDefaultConfigPath();
-}

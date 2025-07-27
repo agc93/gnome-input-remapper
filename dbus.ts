@@ -60,7 +60,6 @@ export class ProxyHandler {
         this._currentConfigDir = settings.configDir;
         this._proxy = getInputRemapperProxy(this._currentConfigDir);
         settings.addWatch('config-dir', 'config-dir', async (settings: ExtensionSettings) => {
-            log(`got config-dir change in proxy handler`);
             this._currentConfigDir = settings.configDir;
             this._proxy = getInputRemapperProxy(settings.configDir);
         });

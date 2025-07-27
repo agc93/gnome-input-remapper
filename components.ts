@@ -43,7 +43,7 @@ export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
 
     constructor(key: string, label: string, settings: ExtensionSettings) {
         super({style_class: 'menu-item preset-menu-item'});
-        log(`creating preset menu item: ${key}`);
+        // log(`creating preset menu item: ${key}`);
 
         this._proxy = new ProxyHandler(settings);
 
@@ -70,14 +70,11 @@ export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
             this.add_child(this._startButton);
         }
         settings.addValueWatch(key, 'enable-preset-actions', async (value) => {
-            log(`got enable-preset-actions change in component: ${value}`);
             if (value && !this.get_children().includes(this._editButton)) {
                 // menu is not populated, but settings want it populated
-                log(`adding enable-preset-actions actions to menu`);
                 this.add_child(this._editButton);
                 this.add_child(this._startButton);
             } else if (!value && this.get_children().includes(this._editButton)) {
-                log(`removing enable-preset-actions actions from menu`);
                 this.remove_child(this._editButton);
                 this.remove_child(this._startButton);
             }

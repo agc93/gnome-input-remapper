@@ -233,7 +233,6 @@ export class DevicesMenu extends PanelMenu.Button {
         const watcher = getBusWatcher((conn, _, owner) => {
             //service is running
             log(`Input Remapper service is running as ${owner}`);
-                log('menu already configured, initializing enabled menu')
                 disconnectEvent();
                 this._menu.removeAll();
                 this.initializeMenuEnabled();
