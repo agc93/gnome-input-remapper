@@ -20,9 +20,8 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
     private _stopAction!: PopupMenu.PopupMenuItem;
     private _notifications: NotificationManager;
     private _stateLabel?: St.Label //GLib';
-        ;
     private _proxy: ProxyHandler;
-    private _settings: ExtensionSettings;
+    private readonly _settings: ExtensionSettings;
     static {
         // GObject.registerClass({Signals: {updated: {param_types: []}}}, DeviceSubMenu);
         GObject.registerClass(this);
@@ -36,7 +35,7 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
         return this._deviceState ?? this.getDeviceState();
     }
 
-    private deviceDirectory: string;
+    private readonly deviceDirectory: string;
     constructor(settings: ExtensionSettings, directory: string) {
         const dirName = GLib.path_get_basename(directory);
         super(dirName, true);
@@ -70,6 +69,7 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
         return this._deviceState;
     }
 
+    // noinspection JSUnusedLocalSymbols
     private setLabel(): void {
         const stateLabel = new St.Label({text: this.deviceState});
         this.actor.insert_child_at_index(stateLabel, 4);
@@ -89,12 +89,12 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
         this.icon.gicon = Gio.icon_new_for_string(iconStr);
     }
 
-    public addPresetMenuItem(presetPath: string, enableActions: boolean = false): PresetMenuItem {
+    public addPresetMenuItem(presetPath: string): PresetMenuItem {
         const key = presetPath;
         const presetName = GLib.path_get_basename(presetPath)
 
         const presetMenuItem = new PresetMenuItem(key, presetName, this._settings);
-        presetMenuItem.connect('preset-start', (event: any, state) => {
+        presetMenuItem.connect('preset-start', (_event: any, state) => {
             this.reloadState();
             log(`preset started: ${state}`);
             this._notifications.showNotification(
@@ -111,7 +111,7 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
                 }
             );
             if (this.deviceState.toUpperCase() == 'STARTING') {
-                const timeout = runAfter(2, () => {
+                runAfter(2, () => {
                     log('post-starting state refresh running');
                     this.reloadState();
                     return false;
@@ -150,7 +150,6 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
     }
 
     private addStopAction() {
-        const numPresets = this.menu.numMenuItems;
         const stopSeparator = new PopupMenu.PopupSeparatorMenuItem();
         this._stopAction = new PopupMenu.PopupMenuItem('Stop');
         this._stopAction.connect('activate', () => {
@@ -179,6 +178,11 @@ export class DevicesMenu extends PanelMenu.Button {
     private _devices: { [key: string]: DeviceSubMenu } = {};
     private _menuHeader?: PopupMenu.PopupSeparatorMenuItem;
     private _proxy: ProxyHandler;
+    private _watcher: {
+        watcherId //GLib';
+        : number; unwatch: () => void //Gio';
+        ;
+    };
 
     static {
         GObject.registerClass(this)
@@ -230,13 +234,13 @@ export class DevicesMenu extends PanelMenu.Button {
             }
         }
 
-        const watcher = getBusWatcher((conn, _, owner) => {
+        this._watcher = getBusWatcher((_conn, _, owner) => {
             //service is running
             log(`Input Remapper service is running as ${owner}`);
                 disconnectEvent();
                 this._menu.removeAll();
                 this.initializeMenuEnabled();
-        }, (conn, _) => {
+        }, (_conn, _) => {
             //service is not running
                 log(`menu already configured, initializing disabled menu (${this._menuStateChangeId})`);
                 disconnectEvent();
@@ -249,7 +253,7 @@ export class DevicesMenu extends PanelMenu.Button {
 
         log(`daemon state: ${daemonState}, menu: ${this._menu.length}`);
 
-        this._extension.settings.addValueWatch('current-config-dir', 'config-dir', value => {
+        this._extension.settings.addValueWatch('current-config-dir', 'config-dir', _ => {
             disconnectEvent();
             const state = this.getDaemonState();
             if (state) {
@@ -258,7 +262,7 @@ export class DevicesMenu extends PanelMenu.Button {
                 this._presetMenuItems = {};
                 this.initializeMenuEnabled();
             }
-            // if the daemon isn't running, the device list is already empty
+            // if the daemon isn't running, the device list is already empty;
             // and if the daemon starts, the handler will fire populate the menu with the updated config dir
         }, SettingsLoader.string(FileHelpers.getDefaultConfigPath()))
 
@@ -271,7 +275,7 @@ export class DevicesMenu extends PanelMenu.Button {
         this.populateMenu();
 
         // @ts-ignore
-        this._menuStateChangeId = this._menu.connect('open-state-changed', (self, isMenuOpen) => {
+        this._menuStateChangeId = this._menu.connect('open-state-changed', (_self, isMenuOpen) => {
             if (isMenuOpen) {
                 log('Input Remapper Menu opened!');
                 this.refreshDeviceStates();
@@ -319,7 +323,7 @@ export class DevicesMenu extends PanelMenu.Button {
     }
 
     private populateMenu() {
-        var configs = new paths().getConfigFiles(this._proxy.currentConfigDir);
+        const configs = new paths().getConfigFiles(this._proxy.currentConfigDir);
         for (const [device, presets] of Object.entries(configs)) {
             this.addDeviceMenu(device, 1);
             this.populateDeviceMenu(device, presets);
@@ -345,7 +349,6 @@ export class DevicesMenu extends PanelMenu.Button {
     }
 
     private populateDeviceMenu(groupName: string, groupPresets: string[]) {
-        let enableActions = this._extension.getSettings().get_value('enable-preset-actions').deepUnpack() ?? false;
         let device = this._devices[groupName];
         if (!device) {
             log(`device menu not found for ${groupName}, creating new device menu`);
@@ -353,28 +356,33 @@ export class DevicesMenu extends PanelMenu.Button {
         }
 
         for (const preset of groupPresets) {
-            this._presetMenuItems[preset] = this._devices[groupName].addPresetMenuItem(preset, enableActions as boolean);
+            this._presetMenuItems[preset] = this._devices[groupName].addPresetMenuItem(preset);
             // this.addPresetMenuItem(groupName, preset);
         }
-
         // this._menu.addMenuItem(this._groups[groupName]);
     }
 
     private _addSettingChangedSignal(key: string, callback: (...args: any[]) => any) {
         this._settingChangedSignals.push(this._settings.connect('changed::' + key, callback));
     }
+
+    public destroy() {
+        this._watcher.unwatch();
+        super.destroy();
+    }
 }
 
+// noinspection JSUnusedGlobalSymbols
 export default class InputRemapperExtension extends Extension {
-    private gsettings?: Gio.Settings
+    private gSettings?: Gio.Settings
     button?: PanelMenu.Button
     private _indicator?: DevicesMenu;
     settings!: ExtensionSettings;
 
     enable() {
         // @ts-ignore
-        this.gsettings = this.getSettings();
-        this.settings = new ExtensionSettings(this.gsettings);
+        this.gSettings = this.getSettings();
+        this.settings = new ExtensionSettings(this.gSettings);
 
         this._indicator = new DevicesMenu(this);
         Main.panel.addToStatusArea(this.uuid, this._indicator);
@@ -384,6 +392,6 @@ export default class InputRemapperExtension extends Extension {
     disable() {
         this._indicator?.destroy();
         this._indicator = undefined;
-        this.gsettings = undefined;
+        this.gSettings = undefined;
     }
 }

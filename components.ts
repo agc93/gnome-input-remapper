@@ -14,19 +14,18 @@ export function getIconButton(icon: string, buttonClasses: string[] = [], iconCl
         icon_name: icon,
         style_class: iconClasses.join(' '),
     });
-    let ejectButton = new St.Button({
+    return new St.Button({
         child: ejectIcon,
         style_class: classes.join(' '),
     });
-    return ejectButton;
 }
 
 export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
     private readonly _key: string;
     private readonly _labelEl: St.Label;
     private _proxy: ProxyHandler;
-    private _editButton: St.Button;
-    private _startButton: St.Button;
+    private readonly _editButton: St.Button;
+    private readonly _startButton: St.Button;
     static {
         GObject.registerClass({Signals: {
                 'preset-start': { param_types: [Clutter.Event.$gtype, GObject.TYPE_STRING] },

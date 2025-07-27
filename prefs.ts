@@ -1,8 +1,8 @@
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
-import FileHelpers from "./utils.js";
 
+// noinspection JSUnusedGlobalSymbols
 export default class GnomeRectanglePreferences extends ExtensionPreferences {
     _settings?: Gio.Settings
 

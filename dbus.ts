@@ -3,6 +3,7 @@ import GLib from "gi://GLib";
 import FileHelpers from "./utils.js";
 import {ExtensionSettings} from "./settings.js";
 
+// language=XML
 const interfaceXml = `
 <node>
     <interface name="inputremapper.Control">
@@ -47,10 +48,6 @@ const interfaceXml = `
     </interface>
 </node>`;
 
-export function watchForMessages() {
-
-}
-
 export type InputRemapperProxy = InputRemapperDbusApi & Gio.DBusProxy
 
 export class ProxyHandler {
@@ -82,10 +79,6 @@ function getInputRemapperProxy(configDir: string) {
     dBusProxy.set_config_dirSync(configDir);
     return dBusProxy;
 }
-
-// Pass the XML string to create a proxy class for that interface
-const InputRemapperProxy = Gio.DBusProxy.makeProxyWrapper<InputRemapperDbusApi>(interfaceXml);
-
 
 export interface InputRemapperDbusApi {
     stop_injectingRemote(group_key: string, callback: (value: unknown, error: GLib.Error | null, fdList: Gio.UnixFDList | null) => void): void;
@@ -132,8 +125,4 @@ export const getBusWatcher = (
         watcherId,
         unwatch: () => Gio.bus_unwatch_name(watcherId),
     }
-}
-
-export const unwatchBus = (watcherId: number) => {
-    Gio.bus_unwatch_name(watcherId);
 }

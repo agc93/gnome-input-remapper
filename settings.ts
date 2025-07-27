@@ -17,7 +17,7 @@ export class ExtensionSettings {
     private __presetActionsEnabledId: number;
     private _notificationsEnabled: boolean;
     private __notificationsEnabledId: number;
-    private _settings: Gio.Settings;
+    _settings: Gio.Settings;
     constructor(settings: Gio.Settings) {
         this._settings = settings;
         this._configDir = settings.get_string('config-dir') ?? FileHelpers.getDefaultConfigPath();
@@ -41,10 +41,10 @@ export class ExtensionSettings {
 
     private _signals: { [key: string]: {[key: string]: number}} = {}
 
-    addWatch(id: string, settingsKey: string, callback: (settings: ExtensionSettings) => Promise<void>) {
+    addWatch(id: string, settingsKey: string, callback: (extSettings: ExtensionSettings, settings: Gio.Settings) => Promise<void>) {
         if (!this._signals[settingsKey]) this._signals[settingsKey] = {};
         this._signals[settingsKey][id] = this._settings.connect('changed::' + settingsKey, async (settings: Gio.Settings) => {
-            await callback(this);
+            await callback(this, settings);
         });
     }
 

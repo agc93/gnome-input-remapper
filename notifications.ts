@@ -1,6 +1,6 @@
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
+import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {ExtensionSettings} from "./settings.js";
 
 /**
@@ -59,7 +59,7 @@ export class NotificationManager {
     }
 
     private initializeNotificationSource() {
-        // Create source with object-based API
+        // Create a source with object-based API
         // Use type assertion to work around type checking issues
         this._notificationSource = new MessageTray.Source({
             title: _('Input Remapper'),
@@ -80,7 +80,7 @@ export class NotificationManager {
      * @param scriptName - Name of the script
      * @param message - Optional message (defaults to "Script executed successfully")
      */
-    showSuccess(scriptName: string, message: string | null = null): void {
+    public showSuccess(scriptName: string, message: string | null = null): void {
         this.showNotification(scriptName, message || _('Script executed successfully'), true);
     }
 
@@ -90,7 +90,7 @@ export class NotificationManager {
      * @param scriptName - Name of the script
      * @param error - Error message or Error object
      */
-    showError(scriptName: string, error: string | Error): void {
+    public showError(scriptName: string, error: string | Error): void {
         const errorMessage = error instanceof Error ? error.message : error;
         this.showNotification(scriptName, errorMessage, false);
     }

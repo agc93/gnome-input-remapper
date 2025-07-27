@@ -7,13 +7,6 @@ function convertUint8ArrayToString(contents: Uint8Array<ArrayBufferLike>) {
     return decoder.decode(contents).trim();
 }
 
-// export function File(path: string) {
-//     if (path.indexOf('https://') == -1)
-//         this.file = Gio.File.new_for_path(path);
-//     else
-//         this.file = Gio.File.new_for_uri(path);
-// }
-
 export function readFile(fileHandle: Gio.File, delimiter = '', strip_header = false) {
     return new Promise((resolve, reject) => {
         try {
@@ -21,9 +14,9 @@ export function readFile(fileHandle: Gio.File, delimiter = '', strip_header = fa
                 try {
                     // grab contents of file or website
                     let buffer = file?.load_contents_finish(res)[1];
-                    if (!buffer) throw new Error('No contents found');
+                    if (!buffer) reject('No contents found');
                     // convert contents to string
-                    let contents = convertUint8ArrayToString(buffer);
+                    let contents = convertUint8ArrayToString(buffer!);
                     let result: string[] = [contents];
 
                     // split contents by delimiter if passed in
@@ -40,7 +33,7 @@ export function readFile(fileHandle: Gio.File, delimiter = '', strip_header = fa
             reject(e.message);
         }
     });
-};
+}
 
 export function listFileObjects(fileHandle: Gio.File) {
     return new Promise((resolve, reject) => {
@@ -80,4 +73,4 @@ export function listFileObjects(fileHandle: Gio.File) {
             reject(e.message);
         }
     });
-};
+}
