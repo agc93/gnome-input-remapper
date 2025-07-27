@@ -3,10 +3,9 @@ import St from "gi://St";
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter'
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js'
-import Gio from "gi://Gio";
-import * as DBus from './dbus.js';
-import {getInputRemapperProxy} from "./dbus.js";
+import {ProxyHandler} from "./dbus.js";
 import FileHelpers from "./utils.js";
+import {ExtensionSettings, SettingsLoader} from "./settings.js";
 
 export function getIconButton(icon: string, buttonClasses: string[] = [], iconClasses: string[] = []) {
     const classes = ['button', 'action-btn', ...buttonClasses];
@@ -25,7 +24,9 @@ export function getIconButton(icon: string, buttonClasses: string[] = [], iconCl
 export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
     private readonly _key: string;
     private readonly _labelEl: St.Label;
-    private _proxy: (DBus.InputRemapperDbusApi & Gio.DBusProxy) | null = null;
+    private _proxy: ProxyHandler;
+    private _editButton: St.Button;
+    private _startButton: St.Button;
     static {
         GObject.registerClass({Signals: {
                 'preset-start': { param_types: [Clutter.Event.$gtype, GObject.TYPE_STRING] },
@@ -40,9 +41,11 @@ export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
         return GLib.path_get_basename(GLib.path_get_dirname(this._key));
     }
 
-    constructor(key: string, label: string, value: string, enableActions: boolean = false) {
+    constructor(key: string, label: string, settings: ExtensionSettings) {
         super({style_class: 'menu-item preset-menu-item'});
-        log(`creating preset menu item: ${key}`)
+        log(`creating preset menu item: ${key}`);
+
+        this._proxy = new ProxyHandler(settings);
 
         this._key = key;
         this._labelEl = new St.Label({
@@ -50,41 +53,35 @@ export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
             y_align: Clutter.ActorAlign.CENTER,
         });
         this.add_child(this._labelEl);
-        if (enableActions) {
-            this._addEditAction();
-            this._addStartAction();
-        }
-    }
 
-    private _addEditAction() {
-        let ejectIcon = new St.Icon({
-            icon_name: 'text-editor-symbolic',
-            style_class: 'popup-menu-icon',
-        });
-        let ejectButton = new St.Button({
-            child: ejectIcon,
-            style_class: 'button pi-action-btn',
-        });
-        ejectButton.connect('clicked', () => {
+        this._editButton = getIconButton('text-editor-symbolic', ['pi-action-btn']);
+        this._editButton.connect('clicked', () => {
             FileHelpers.openDirectory(this._key);
         });
-        this.add_child(ejectButton);
-
-    }
-
-    private _addStartAction() {
-        let ejectIcon = new St.Icon({
-            icon_name: 'media-playback-start-symbolic',
-            style_class: 'popup-menu-icon',
-        });
-        let ejectButton = new St.Button({
-            child: ejectIcon,
-            style_class: 'button',
-        });
-        ejectButton.connect('clicked', () => {
+        this._startButton = getIconButton('media-playback-start-symbolic', ['pi-action-btn']);
+        this._startButton.connect('clicked', () => {
             this.startPreset(null);
         });
-        this.add_child(ejectButton);
+
+
+
+        if (settings.presetActionsEnabled) {
+            this.add_child(this._editButton);
+            this.add_child(this._startButton);
+        }
+        settings.addValueWatch(key, 'enable-preset-actions', async (value) => {
+            log(`got enable-preset-actions change in component: ${value}`);
+            if (value && !this.get_children().includes(this._editButton)) {
+                // menu is not populated, but settings want it populated
+                log(`adding enable-preset-actions actions to menu`);
+                this.add_child(this._editButton);
+                this.add_child(this._startButton);
+            } else if (!value && this.get_children().includes(this._editButton)) {
+                log(`removing enable-preset-actions actions from menu`);
+                this.remove_child(this._editButton);
+                this.remove_child(this._startButton);
+            }
+        }, SettingsLoader.boolean(false))
     }
 
     activate(event: Clutter.Event) {
@@ -94,10 +91,9 @@ export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
 
     startPreset(event?: any) {
         try {
-            this._proxy = getInputRemapperProxy();
-            const result = this._proxy.start_injectingSync(this.deviceName, this.presetName);
+            const result = this._proxy.proxy.start_injectingSync(this.deviceName, this.presetName);
             // log(`got response: ${result}`);
-            const state = this._proxy.get_stateSync(this.deviceName);
+            const state = this._proxy.proxy.get_stateSync(this.deviceName);
             // log(`got device state: ${state}`);
             const presetStarted = result && (state.includes('RUNNING') || state.includes('STARTING'));
             if (presetStarted) this.emit('preset-start', event, state[0]);

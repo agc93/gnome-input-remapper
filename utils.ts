@@ -1,19 +1,39 @@
 import GLib from 'gi://GLib';
-import Gio from 'gi://Gio';
-import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
-import {Source} from 'resource:///org/gnome/shell/ui/messageTray.js';
-import Util from "resource:///org/gnome/shell/misc/util.js";
+import Gio from 'gi://Gio'
 
 export default class FileHelpers {
-    public static getConfigPath(presetDir: boolean = false): string {
+    public static getDefaultConfigPath(presetDir: boolean = false): string {
         const homeDir = GLib.get_home_dir();
         const relPath = [homeDir, '.config', 'input-remapper-2'];
         return GLib.build_filenamev( presetDir ? [...relPath, 'presets'] : relPath );
     }
 
-    public getConfigFiles(): { [key: string]: string[] } {
-        const configDirectories = this.getConfigDirectories();
+    private getConfigDirectories(configPath: string): string[] {
+        const presetsPath = GLib.build_filenamev([configPath, 'presets']);
+
+        try {
+            const configDir = Gio.File.new_for_path(presetsPath);
+            const directories: string[] = [];
+            const enumerator = configDir.enumerate_children('standard::name,standard::type', Gio.FileQueryInfoFlags.NONE, null);
+            let fileInfo: Gio.FileInfo | null;
+
+            while ((fileInfo = enumerator.next_file(null)) !== null) {
+                if (fileInfo.get_file_type() === Gio.FileType.DIRECTORY) {
+                    const fileName = fileInfo.get_name();
+                    log(`Found directory: ${fileName}`);
+                    directories.push(GLib.build_filenamev([presetsPath, fileName]));
+                }
+            }
+            return directories;
+        } catch (error) {
+            logError(error);
+            return [];
+        }
+
+    }
+
+    public getConfigFiles(configPath: string): { [key: string]: string[] } {
+        const configDirectories = this.getConfigDirectories(configPath);
         const result: { [key: string]: string[] } = {};
 
         for (const dirPath of configDirectories) {
@@ -42,30 +62,6 @@ export default class FileHelpers {
         }
 
         return result;
-    }
-
-    public getConfigDirectories(): string[] {
-        const configPath = FileHelpers.getConfigPath(true);
-        const configDir = Gio.File.new_for_path(configPath);
-        const directories: string[] = [];
-
-        try {
-            const enumerator = configDir.enumerate_children('standard::name,standard::type', Gio.FileQueryInfoFlags.NONE, null);
-            let fileInfo: Gio.FileInfo | null;
-
-            while ((fileInfo = enumerator.next_file(null)) !== null) {
-                if (fileInfo.get_file_type() === Gio.FileType.DIRECTORY) {
-                    const fileName = fileInfo.get_name();
-                    log(`Found directory: ${fileName}`);
-                    directories.push(GLib.build_filenamev([configPath, fileName]));
-                }
-            }
-        } catch (error) {
-            logError(error);
-            return [];
-        }
-
-        return directories;
     }
 
     static openDirectory(dirPath: string): boolean {
@@ -107,3 +103,6 @@ export function openInputRemapperUi() {
         return false;
     }
 }
+
+
+

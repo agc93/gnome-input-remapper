@@ -1,15 +1,18 @@
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
+import {ExtensionSettings} from "./settings.js";
 
 /**
  * Manages notifications for script execution
  */
 export class NotificationManager {
     private _notificationSource: any = null;
+    private _settings: ExtensionSettings;
 
-    constructor() {
+    constructor(settings: ExtensionSettings) {
         this._notificationSource = null;
+        this._settings = settings;
     }
 
     /**
@@ -32,24 +35,27 @@ export class NotificationManager {
             this.initializeNotificationSource();
         }
 
-        // Create notification with object-based API
-        // Use type assertion to work around type checking issues
-        const notification = new MessageTray.Notification({
-            source: this._notificationSource,
-            title: title,
-            body: body,
-            iconName: iconName
-        });
+        if (this._settings.notificationsEnabled) {
+
+            // Create notification with object-based API
+            // Use type assertion to work around type checking issues
+            const notification = new MessageTray.Notification({
+                source: this._notificationSource,
+                title: title,
+                body: body,
+                iconName: iconName
+            });
 
 
-        if (Object.keys(actions).length > 0) {
-            for (const [label, callback] of Object.entries(actions)) {
-                notification.addAction(label, callback);
+            if (Object.keys(actions).length > 0) {
+                for (const [label, callback] of Object.entries(actions)) {
+                    notification.addAction(label, callback);
+                }
             }
-        }
 
-        // Add notification to the source
-        this._notificationSource.addNotification(notification);
+            // Add notification to the source
+            this._notificationSource.addNotification(notification);
+        }
     }
 
     private initializeNotificationSource() {
@@ -87,24 +93,6 @@ export class NotificationManager {
     showError(scriptName: string, error: string | Error): void {
         const errorMessage = error instanceof Error ? error.message : error;
         this.showNotification(scriptName, errorMessage, false);
-    }
-
-    /**
-     * Show a notification with the exit code
-     *
-     * @param scriptName - Name of the script
-     * @param exitCode - Process exit code
-     */
-    showExitStatus(scriptName: string, exitCode: number): void {
-        if (exitCode === 0) {
-            this.showSuccess(scriptName);
-        } else {
-            this.showNotification(
-                scriptName,
-                _('Failed with exit code %d').format(exitCode),
-                false
-            );
-        }
     }
 
     /**

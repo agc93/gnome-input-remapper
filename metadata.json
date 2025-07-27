@@ -1,6 +1,6 @@
 {
-  "name": "Input Remapper Extension",
-  "description": "Shows the currently selected Input Remapper profiles in the GNOME shell",
+  "name": "Input Remapper Control",
+  "description": "Activate your Input Remapper presets from the GNOME top bar",
   "uuid": "gnome-input-remapper@agc93.dev",
   "url": "https://github.com/agc93/gnome-input-remapper",
   "settings-schema": "org.gnome.shell.extensions.gnome-input-remapper",

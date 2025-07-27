@@ -8,11 +8,10 @@ import FileHelpers, {default as paths, openInputRemapperUi, runAfter} from './ut
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
-import * as Util from 'resource:///org/gnome/shell/misc/util.js'
 import {getIconButton, PresetMenuItem} from './components.js'
-import * as DBus from './dbus.js';
-import {getBusWatcher, getInputRemapperProxy} from "./dbus.js";
+import {getBusWatcher, ProxyHandler} from './dbus.js';
 import {NotificationManager} from "./notifications.js";
+import {ExtensionSettings, SettingsLoader} from "./settings.js";
 
 type ImplPopupMenu =  PopupMenu.PopupMenu;
 
@@ -22,6 +21,8 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
     private _notifications: NotificationManager;
     private _stateLabel?: St.Label //GLib';
         ;
+    private _proxy: ProxyHandler;
+    private _settings: ExtensionSettings;
     static {
         // GObject.registerClass({Signals: {updated: {param_types: []}}}, DeviceSubMenu);
         GObject.registerClass(this);
@@ -36,17 +37,18 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
     }
 
     private deviceDirectory: string;
-    constructor(directory: string, presets: string[]) {
+    constructor(settings: ExtensionSettings, directory: string) {
         const dirName = GLib.path_get_basename(directory);
         super(dirName, true);
-
+        this._settings = settings;
+        this._proxy = new ProxyHandler(settings);
         this.deviceDirectory = directory;
         const titleItem = this.getHeader();
         this.menu.addMenuItem(titleItem);
         this.addStopAction();
 
         this.setMenuIcon();
-        this._notifications = new NotificationManager();
+        this._notifications = new NotificationManager(this._settings);
 
     }
 
@@ -58,8 +60,7 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
     }
 
     private getDeviceState(): string {
-        const proxy = getInputRemapperProxy()
-        const state = proxy.get_stateSync(this.deviceName);
+        const state = this._proxy.proxy.get_stateSync(this.deviceName);
         // log(`got device state: ${state}`, state);
         const normalizedState = state[0].charAt(0).toUpperCase() + state[0].slice(1).toLowerCase();
         this._deviceState = state[0];
@@ -92,7 +93,7 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
         const key = presetPath;
         const presetName = GLib.path_get_basename(presetPath)
 
-        const presetMenuItem = new PresetMenuItem(key, presetName, this.deviceName, enableActions as boolean);
+        const presetMenuItem = new PresetMenuItem(key, presetName, this._settings);
         presetMenuItem.connect('preset-start', (event: any, state) => {
             this.reloadState();
             log(`preset started: ${state}`);
@@ -132,8 +133,7 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
     }
 
     public stopInjectingForDevice(enableNotification: boolean = true) {
-        const proxy = getInputRemapperProxy();
-        proxy.stop_injectingSync(this.deviceName);
+        this._proxy.proxy.stop_injectingSync(this.deviceName);
         this.reloadState();
         if (enableNotification) {
             this._notifications.showNotification(
@@ -174,11 +174,11 @@ export class DevicesMenu extends PanelMenu.Button {
     private _presetMenuItems: { [key: string]: PresetMenuItem };
     private _menuStateChangeId: any;
     private _extension: InputRemapperExtension;
-    private _groups: {[key: string]: DeviceSubMenu};
     private _settingChangedSignals: any[] = [];
     private _settings: Gio.Settings;
     private _devices: { [key: string]: DeviceSubMenu } = {};
     private _menuHeader?: PopupMenu.PopupSeparatorMenuItem;
+    private _proxy: ProxyHandler;
 
     static {
         GObject.registerClass(this)
@@ -194,8 +194,7 @@ export class DevicesMenu extends PanelMenu.Button {
 
     private getDaemonState(): boolean {
         try {
-            const proxy = getInputRemapperProxy();
-            const state = proxy.helloSync("gnome-input-remapper");
+            const state = this._proxy.proxy.helloSync("gnome-input-remapper");
             return state[0] == "gnome-input-remapper";
         } catch (e) {
             return false;
@@ -207,8 +206,8 @@ export class DevicesMenu extends PanelMenu.Button {
         this.setIcon();
         this._extension = extension;
         this._settings = extension.getSettings();
+        this._proxy = new ProxyHandler(this._extension.settings);
 
-        this._groups = {};
         this._presetMenuItems = {};
         this._menu = this.menu as ImplPopupMenu;
 
@@ -245,22 +244,26 @@ export class DevicesMenu extends PanelMenu.Button {
                 this._menu.removeAll();
                 //TODO: we need to reset the menu back to a disabled state
                 this.addDisabledMenu();
-        })
+        });
 
         const daemonState = this.getDaemonState();
 
         log(`daemon state: ${daemonState}, menu: ${this._menu.length}`);
 
-        // if (daemonState) {
-        //     this.initializeMenuEnabled();
-        // } else {
-        //     const notif = new NotificationManager();
-        //     notif.showNotification(
-        //         `Input Remapper not running`,
-        //         `Input Remapper is not running. Please start it to use this extension.`,
-        //         false
-        //     );
-        //     this.addDisabledMenu();
+        this._extension.settings.addValueWatch('current-config-dir', 'config-dir', value => {
+            disconnectEvent();
+            const state = this.getDaemonState();
+            if (state) {
+                this._menu.removeAll();
+                this._devices = {};
+                this._presetMenuItems = {};
+                this.initializeMenuEnabled();
+            }
+            // if the daemon isn't running, the device list is already empty
+            // and if the daemon starts, the handler will fire populate the menu with the updated config dir
+        }, SettingsLoader.string(FileHelpers.getDefaultConfigPath()))
+
+
         // }
     }
 
@@ -295,9 +298,8 @@ export class DevicesMenu extends PanelMenu.Button {
         // this._menuHeader.style_class = 'menu-item submenu-menu-item';
         const stopButton = getIconButton('media-playback-stop-symbolic');
         stopButton.connect('clicked', () => {
-            const proxy = getInputRemapperProxy();
-            proxy.stop_allSync();
-            const notif = new NotificationManager();
+            this._proxy.proxy.stop_allSync();
+            const notif = new NotificationManager(this._extension.settings);
             notif.showNotification(
                 `Stopped all devices`,
                 `Stopped injecting Input Remapper presets for all devices.`,
@@ -318,10 +320,10 @@ export class DevicesMenu extends PanelMenu.Button {
     }
 
     private populateMenu() {
-        var configs = new paths().getConfigFiles();
+        var configs = new paths().getConfigFiles(this._proxy.currentConfigDir);
         for (const [device, presets] of Object.entries(configs)) {
             this.addDeviceMenu(device, 1);
-            this.addMenuForDevice(device, presets);
+            this.populateDeviceMenu(device, presets);
         }
     }
 
@@ -329,8 +331,8 @@ export class DevicesMenu extends PanelMenu.Button {
         this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         this._menu.addAction("Open Config Directory", () => {
-            const path = FileHelpers.getConfigPath();
-            paths.openDirectory(path);
+            // const path = FileHelpers.getConfigPath();
+            paths.openDirectory(this._proxy.currentConfigDir);
         });
 
         (this.menu as ImplPopupMenu).addAction("Open Input Remapper", () => {
@@ -339,34 +341,24 @@ export class DevicesMenu extends PanelMenu.Button {
     }
 
     private addDeviceMenu(device: string, position?: number) {
-        this._devices[device] = new DeviceSubMenu(device, []);
+        this._devices[device] = new DeviceSubMenu(this._extension.settings, device);
         this._menu.addMenuItem(this._devices[device], position);
     }
 
-    private addMenuForDevice(groupName: string, groupPresets: string[]) {
+    private populateDeviceMenu(groupName: string, groupPresets: string[]) {
         let enableActions = this._extension.getSettings().get_value('enable-preset-actions').deepUnpack() ?? false;
         let device = this._devices[groupName];
         if (!device) {
-            this._devices[groupName] = new DeviceSubMenu(groupName, groupPresets);
+            log(`device menu not found for ${groupName}, creating new device menu`);
+            this.addDeviceMenu(groupName);
         }
 
         for (const preset of groupPresets) {
-            const presetMenuItem = this._devices[groupName].addPresetMenuItem(preset, enableActions as boolean);
-            this._presetMenuItems[preset] = presetMenuItem;
+            this._presetMenuItems[preset] = this._devices[groupName].addPresetMenuItem(preset, enableActions as boolean);
             // this.addPresetMenuItem(groupName, preset);
         }
 
         // this._menu.addMenuItem(this._groups[groupName]);
-    }
-
-    /** @deprecated **/
-    private addPresetMenuItem(device: string, presetPath: string) {
-        const key = presetPath;
-        const presetName = GLib.path_get_basename(presetPath)
-        let enableActions = this._extension.getSettings().get_value('enable-preset-actions').deepUnpack() ?? false;
-        const presetMenuItem = new PresetMenuItem(key, presetName, device, enableActions as boolean);
-        this._presetMenuItems[key] = presetMenuItem;
-        this._groups[device].menu.addMenuItem(presetMenuItem);
     }
 
     private _addSettingChangedSignal(key: string, callback: (...args: any[]) => any) {
@@ -375,30 +367,24 @@ export class DevicesMenu extends PanelMenu.Button {
 }
 
 export default class InputRemapperExtension extends Extension {
-    gsettings?: Gio.Settings
-    animationsEnabled: boolean = true
+    private gsettings?: Gio.Settings
     button?: PanelMenu.Button
     private _indicator?: DevicesMenu;
+    settings!: ExtensionSettings;
 
     enable() {
         // @ts-ignore
         this.gsettings = this.getSettings();
-        this.animationsEnabled = this.gsettings!.get_value('padding-inner').deepUnpack() ?? 8
+        this.settings = new ExtensionSettings(this.gsettings);
 
         this._indicator = new DevicesMenu(this);
         Main.panel.addToStatusArea(this.uuid, this._indicator);
 
     }
 
-
-
     disable() {
         this._indicator?.destroy();
         this._indicator = undefined;
         this.gsettings = undefined;
     }
-
-
-
-
 }

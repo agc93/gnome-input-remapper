@@ -1,6 +1,7 @@
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import FileHelpers from "./utils.js";
+import {ExtensionSettings} from "./settings.js";
 
 const interfaceXml = `
 <node>
@@ -50,8 +51,33 @@ export function watchForMessages() {
 
 }
 
-export function getInputRemapperProxy(configDir?: string) {
-    configDir ??= FileHelpers.getConfigPath();
+export type InputRemapperProxy = InputRemapperDbusApi & Gio.DBusProxy
+
+export class ProxyHandler {
+    private _proxy: InputRemapperProxy;
+    private _currentConfigDir: string;
+    constructor(settings: ExtensionSettings) {
+        this._currentConfigDir = settings.configDir;
+        this._proxy = getInputRemapperProxy(this._currentConfigDir);
+        settings.addWatch('config-dir', 'config-dir', async (settings: ExtensionSettings) => {
+            log(`got config-dir change in proxy handler`);
+            this._currentConfigDir = settings.configDir;
+            this._proxy = getInputRemapperProxy(settings.configDir);
+        });
+    }
+
+    get proxy(): InputRemapperProxy {
+        return this._proxy;
+    }
+
+    get currentConfigDir(): string {
+        return this._currentConfigDir;
+    }
+}
+
+function getInputRemapperProxy(configDir: string) {
+    configDir ??= FileHelpers.getDefaultConfigPath();
+    log(`getting input remapper proxy for config dir: ${configDir}`);
     const proxy = Gio.DBusProxy.makeProxyWrapper<InputRemapperDbusApi>(interfaceXml);
     const dBusProxy = proxy(Gio.DBus.system, 'inputremapper.Control', '/inputremapper/Control');
     dBusProxy.set_config_dirSync(configDir);

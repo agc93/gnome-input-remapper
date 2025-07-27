@@ -12,5 +12,6 @@
     "skipLibCheck": true
   },
   "include": ["ambient.d.ts"],
-  "files": ["extension.ts", "prefs.ts", "utils.ts", "file.ts", "components.ts", "dbus.ts", "notifications.ts"]
+  "files": ["extension.ts",
+    "prefs.ts", "utils.ts", "file.ts", "components.ts", "dbus.ts", "notifications.ts", "settings.ts"]
 }

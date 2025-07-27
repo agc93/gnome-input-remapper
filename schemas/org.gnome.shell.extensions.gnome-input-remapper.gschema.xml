@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <schemalist>
     <schema id="org.gnome.shell.extensions.gnome-input-remapper" path="/org/gnome/shell/extensions/gnome-input-remapper/">
-        <key name="padding-inner" type="i">
-            <default>8</default>
-            <summary>Inner padding</summary>
-            <description>Padding</description>
-        </key>
         <key name="enable-preset-actions" type="b">
             <default>false</default>
             <summary>Quick Edit Preset</summary>
             <description>Adds actions to quickly edit the preset configuration file.</description>
+        </key>
+        <key name="enable-notifications" type="b">
+            <default>true</default>
+            <summary>Show Notifications</summary>
+            <description>Shows notifications when presets are started and stopped from the extension menu.</description>
         </key>
         <key name="config-dir" type="s">
             <default>"~/.config/input-remapper-2/"</default>
