@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Input Remapper for GNOME</title><link>https://agc93.github.io/gnome-input-remapper/</link><description>Recent content on Input Remapper for GNOME</description><generator>Hugo</generator><language>en-us</language><atom:link href="https://agc93.github.io/gnome-input-remapper/index.xml" rel="self" type="application/rss+xml"/><item><title>Introduction</title><link>https://agc93.github.io/gnome-input-remapper/docs/introduction/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://agc93.github.io/gnome-input-remapper/docs/introduction/</guid><description>&lt;h1 id="introduction">
+ Introduction
+ &lt;a class="anchor" href="#introduction">#&lt;/a>
+&lt;/h1>
+&lt;h2 id="about-input-remapper-for-gnome">
+ About Input Remapper for GNOME
+ &lt;a class="anchor" href="#about-input-remapper-for-gnome">#&lt;/a>
+&lt;/h2>
+&lt;p>This extension for GNOME Shell allows you to control 
+ &lt;a href="https://github.com/sezanzeb/input-remapper">Input Remapper&lt;/a> from your GNOME desktop. With this extension installed, you can:&lt;/p>
+&lt;ul>
+&lt;li>See which devices Input Remapper is currently injecting keystrokes for&lt;/li>
+&lt;li>Quickly activate any of your configured presets&lt;/li>
+&lt;li>Stop injecting for any specific device, or all devices at once&lt;/li>
+&lt;li>Quickly open Input Remapper itself, or any of its configuration files&lt;/li>
+&lt;/ul>
+&lt;blockquote class="book-hint warning">
+&lt;p>You&amp;rsquo;ll need Input Remapper installed and running for this extension to work correctly! This extension doesn&amp;rsquo;t replace Input Remapper (or its UI), it just makes it easier to use.&lt;/p></description></item><item><title>Installation</title><link>https://agc93.github.io/gnome-input-remapper/docs/installation/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://agc93.github.io/gnome-input-remapper/docs/installation/</guid><description>&lt;h1 id="installation">
+ Installation
+ &lt;a class="anchor" href="#installation">#&lt;/a>
+&lt;/h1>
+&lt;h2 id="installing-input-remapper-for-gnome">
+ Installing Input Remapper for GNOME
+ &lt;a class="anchor" href="#installing-input-remapper-for-gnome">#&lt;/a>
+&lt;/h2>
+&lt;blockquote class="book-hint info">
+&lt;p>The extension isn&amp;rsquo;t available on the GNOME Extensions site yet, so we&amp;rsquo;ll cover the steps to manually install it.&lt;/p>
+&lt;/blockquote>
+&lt;p>Getting this extension set up and ready shouldn&amp;rsquo;t take more than a few minutes! Follow the steps below:&lt;/p>
+&lt;h3 id="1-make-sure-input-remapper-is-ready">
+ 1. Make sure Input Remapper is ready
+ &lt;a class="anchor" href="#1-make-sure-input-remapper-is-ready">#&lt;/a>
+&lt;/h3>
+&lt;p>Once you&amp;rsquo;ve installed Input Remapper, launch the UI to make sure it runs and detects your peripherals&lt;/p></description></item><item><title>Usage</title><link>https://agc93.github.io/gnome-input-remapper/docs/usage/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://agc93.github.io/gnome-input-remapper/docs/usage/</guid><description>&lt;h1 id="using-input-remapper-for-gnome">
+ Using Input Remapper for GNOME
+ &lt;a class="anchor" href="#using-input-remapper-for-gnome">#&lt;/a>
+&lt;/h1>
+&lt;p>Once you&amp;rsquo;ve 
+ &lt;a href="https://agc93.github.io/gnome-input-remapper/docs/installation/">installed and enabled&lt;/a> the extension, you&amp;rsquo;ll have a new button in your GNOME top panel, with a keyboard icon.&lt;/p>
+&lt;p>Click the icon to open the menu. The menu will list any devices with configured presets, and if you click any device it will list all presets for that device. Click the preset name and the extension will tell Input Remapper to start injecting keystrokes for the device according to the preset.&lt;/p></description></item><item><title>FAQ</title><link>https://agc93.github.io/gnome-input-remapper/docs/faq/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://agc93.github.io/gnome-input-remapper/docs/faq/</guid><description>&lt;h1 id="frequently-asked-questions">
+ Frequently Asked Questions
+ &lt;a class="anchor" href="#frequently-asked-questions">#&lt;/a>
+&lt;/h1>
+&lt;h2 id="why-arent-all-of-my-devices-listed-in-the-menu">
+ Why aren&amp;rsquo;t all of my devices listed in the menu?
+ &lt;a class="anchor" href="#why-arent-all-of-my-devices-listed-in-the-menu">#&lt;/a>
+&lt;/h2>
+&lt;p>The plugin will only list devices that have at least one preset configured. Open Input Remapper and add a preset for your chosen device and when you next open the Input Remapper menu in GNOME, it will be listed.&lt;/p>
+&lt;h2 id="can-i-safely-remove-the-extension">
+ Can I safely remove the extension?
+ &lt;a class="anchor" href="#can-i-safely-remove-the-extension">#&lt;/a>
+&lt;/h2>
+&lt;p>Absolutely. From the GNOME Extensions app, find Input Remapper Control in the list, click the three dots icon, click &lt;em>Remove&amp;hellip;&lt;/em> and the extension will be removed. This will not affect your Input Remapper install or any of your devices and presets.&lt;/p></description></item></channel></rss>
