@@ -20,6 +20,7 @@ export class ExtensionSettings {
     _settings: Gio.Settings;
     constructor(settings: Gio.Settings) {
         this._settings = settings;
+        //TODO: these should be refactored to use the normal value watch logic that consumers use
         this._configDir = settings.get_string('config-dir') ?? FileHelpers.getDefaultConfigPath();
         this.__configDirId = this._settings.connect('changed::config-dir', (settings: Gio.Settings) => {
             this._configDir = settings.get_string('config-dir') ?? FileHelpers.getDefaultConfigPath();
@@ -55,7 +56,7 @@ export class ExtensionSettings {
         }
         this._signals[settingsKey][id] = this._settings.connect('changed::' + settingsKey, (settings: Gio.Settings) => {
             const value = transformer(settings, settingsKey);
-            log(`got changed::${settingsKey} signal, invoking ${id} callback with value: ${value}`);
+            // log(`got changed::${settingsKey} signal, invoking ${id} callback with value: ${value}`);
             callback(value);
         });
     }
@@ -71,6 +72,19 @@ export class ExtensionSettings {
 
     get notificationsEnabled(): boolean {
         return this._notificationsEnabled;
+    }
+
+    public destroy(): void {
+        // noinspection JSUnusedLocalSymbols
+        for (const [settingsKey, signals] of Object.entries(this._signals)) {
+            for (const [id, signalId] of Object.entries(signals)) {
+                this._settings.disconnect(signalId);
+                // log(`disconnected signal ${id} for ${settingsKey}`);
+            }
+        }
+        this._settings.disconnect(this.__configDirId);
+        this._settings.disconnect(this.__presetActionsEnabledId);
+        this._settings.disconnect(this.__notificationsEnabledId);
     }
 
 }

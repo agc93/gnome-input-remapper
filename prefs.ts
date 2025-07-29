@@ -38,9 +38,16 @@ export default class GnomeRectanglePreferences extends ExtensionPreferences {
         });
         animationGroup.add(presetActionsEnabled);
 
+        const notificationsEnabled = new Adw.SwitchRow({
+            title: _('Notifications'),
+            subtitle: _('Enable the notifications when presets are started or stopped.'),
+        });
+        animationGroup.add(notificationsEnabled);
+
         window.add(page)
 
         this._settings!.bind('enable-preset-actions', presetActionsEnabled, 'active', Gio.SettingsBindFlags.DEFAULT);
+        this._settings!.bind('enable-notifications', notificationsEnabled, 'active', Gio.SettingsBindFlags.DEFAULT);
         this._settings!.bind('config-dir', configPathInner, 'text', Gio.SettingsBindFlags.DEFAULT);
 
         return Promise.resolve();

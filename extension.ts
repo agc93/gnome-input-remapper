@@ -215,8 +215,6 @@ export class DevicesMenu extends PanelMenu.Button {
         this._presetMenuItems = {};
         this._menu = this.menu as ImplPopupMenu;
 
-        this._addSettingChangedSignal('enable-preset-actions', () => {});
-
         this._menuLayout = new St.BoxLayout({
             vertical: false,
             clip_to_allocation: true,
@@ -277,7 +275,7 @@ export class DevicesMenu extends PanelMenu.Button {
         // @ts-ignore
         this._menuStateChangeId = this._menu.connect('open-state-changed', (_self, isMenuOpen) => {
             if (isMenuOpen) {
-                log('Input Remapper Menu opened!');
+                // log('Input Remapper Menu opened!');
                 this.refreshDeviceStates();
             }
         });
@@ -368,6 +366,11 @@ export class DevicesMenu extends PanelMenu.Button {
 
     public destroy() {
         this._watcher.unwatch();
+        for (const presetMenuItem of Object.entries(this._presetMenuItems)) {
+            presetMenuItem[1].destroy();
+        }
+        this._menu.disconnect(this._menuStateChangeId);
+        this._watcher.unwatch();
         super.destroy();
     }
 }
@@ -392,6 +395,8 @@ export default class InputRemapperExtension extends Extension {
     disable() {
         this._indicator?.destroy();
         this._indicator = undefined;
+        this.settings.destroy();
+        this.settings = undefined!;
         this.gSettings = undefined;
     }
 }

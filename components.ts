@@ -40,6 +40,8 @@ export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
         return GLib.path_get_basename(GLib.path_get_dirname(this._key));
     }
 
+    private _destructors: (() => void)[] = [];
+
     constructor(key: string, label: string, settings: ExtensionSettings) {
         super({style_class: 'menu-item preset-menu-item'});
         // log(`creating preset menu item: ${key}`);
@@ -54,15 +56,15 @@ export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
         this.add_child(this._labelEl);
 
         this._editButton = getIconButton('text-editor-symbolic', ['pi-action-btn']);
-        this._editButton.connect('clicked', () => {
+        const editWatch = this._editButton.connect('clicked', () => {
             FileHelpers.openDirectory(this._key);
         });
+        this._destructors.push(() => {this._editButton.disconnect(editWatch)});
         this._startButton = getIconButton('media-playback-start-symbolic', ['pi-action-btn']);
-        this._startButton.connect('clicked', () => {
+        const startWatch = this._startButton.connect('clicked', () => {
             this.startPreset(null);
         });
-
-
+        this._destructors.push(() => this._startButton.disconnect(startWatch));
 
         if (settings.presetActionsEnabled) {
             this.add_child(this._editButton);
@@ -78,6 +80,13 @@ export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
                 this.remove_child(this._startButton);
             }
         }, SettingsLoader.boolean(false))
+    }
+
+    public destroy() {
+        // settings watcher will be disposed when the settings instance is destroyed
+        for (const destructor of this._destructors) {
+            destructor();
+        }
     }
 
     activate(event: Clutter.Event) {
