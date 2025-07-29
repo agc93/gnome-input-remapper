@@ -1,0 +1,42 @@
+name: Docs CI Build
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+    steps:
+      - name: Checkout recursively
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive  # Fetch Hugo themes
+          fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: '0.148.1'
+          extended: true
+      - name: Build docs
+        run: hugo --minify
+        working-directory: './docs'
+        env:
+          HUGO_ENV: production
+      - name: Upload docs packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: ircg-docs
+          path: docs/public/
+      - name: Deploy to Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/public
