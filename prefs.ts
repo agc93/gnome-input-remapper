@@ -4,11 +4,9 @@ import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Ex
 
 // noinspection JSUnusedGlobalSymbols
 export default class GnomeRectanglePreferences extends ExtensionPreferences {
-    _settings?: Gio.Settings
 
     fillPreferencesWindow(window: Adw.PreferencesWindow): Promise<void> {
-        // @ts-ignore
-        this._settings = this.getSettings();
+        const settings = this.getSettings();
 
         const page = new Adw.PreferencesPage({
             title: _('General'),
@@ -46,9 +44,9 @@ export default class GnomeRectanglePreferences extends ExtensionPreferences {
 
         window.add(page)
 
-        this._settings!.bind('enable-preset-actions', presetActionsEnabled, 'active', Gio.SettingsBindFlags.DEFAULT);
-        this._settings!.bind('enable-notifications', notificationsEnabled, 'active', Gio.SettingsBindFlags.DEFAULT);
-        this._settings!.bind('config-dir', configPathInner, 'text', Gio.SettingsBindFlags.DEFAULT);
+        settings!.bind('enable-preset-actions', presetActionsEnabled, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings!.bind('enable-notifications', notificationsEnabled, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings!.bind('config-dir', configPathInner, 'text', Gio.SettingsBindFlags.DEFAULT);
 
         return Promise.resolve();
     }

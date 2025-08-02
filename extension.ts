@@ -4,7 +4,7 @@ import St from 'gi://St';
 import GObject from 'gi://GObject';
 import Clutter from 'gi://Clutter';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import FileHelpers, {default as paths, openInputRemapperUi, runAfter} from './utils.js';
+import FileHelpers, {default as paths, openInputRemapperUi, runAfter, activeTimeouts} from './utils.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
@@ -60,7 +60,7 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
 
     private getDeviceState(): string {
         const state = this._proxy.proxy.get_stateSync(this.deviceName);
-        // log(`got device state: ${state}`, state);
+        // console.debug(`got device state: ${state}`, state);
         const normalizedState = state[0].charAt(0).toUpperCase() + state[0].slice(1).toLowerCase();
         this._deviceState = state[0];
         if (this._stateLabel) {
@@ -96,7 +96,7 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
         const presetMenuItem = new PresetMenuItem(key, presetName, this._settings);
         presetMenuItem.connect('preset-start', (_event: any, state) => {
             this.reloadState();
-            log(`preset started: ${state}`);
+            console.log(`Input Remapper preset started: ${state}`);
             this._notifications.showNotification(
                 `Activated ${presetName} on ${this.deviceName}`,
                 `Started injecting Input Remapper preset ${presetName} on ${this.deviceName}.`,
@@ -112,7 +112,7 @@ export class DeviceSubMenu extends PopupMenu.PopupSubMenuMenuItem {
             );
             if (this.deviceState.toUpperCase() == 'STARTING') {
                 runAfter(2, () => {
-                    log('post-starting state refresh running');
+                    console.log('Preset started, refreshing device state...');
                     this.reloadState();
                     return false;
                 });
@@ -226,7 +226,7 @@ export class DevicesMenu extends PanelMenu.Button {
 
         const disconnectEvent = () => {
             if (this._menuStateChangeId) {
-                log(`disconnecting menu state change handler: ${this._menuStateChangeId}`);
+                console.debug(`disconnecting menu state change handler: ${this._menuStateChangeId}`);
                 this._menu.disconnect(this._menuStateChangeId);
                 this._menuStateChangeId = undefined;
             }
@@ -234,13 +234,13 @@ export class DevicesMenu extends PanelMenu.Button {
 
         this._watcher = getBusWatcher((_conn, _, owner) => {
             //service is running
-            log(`Input Remapper service is running as ${owner}`);
+            console.log(`Input Remapper service is running as ${owner}`);
                 disconnectEvent();
                 this._menu.removeAll();
                 this.initializeMenuEnabled();
         }, (_conn, _) => {
             //service is not running
-                log(`menu already configured, initializing disabled menu (${this._menuStateChangeId})`);
+                console.debug(`menu already configured, initializing disabled menu (${this._menuStateChangeId})`);
                 disconnectEvent();
                 this._menu.removeAll();
                 //TODO: we need to reset the menu back to a disabled state
@@ -249,7 +249,7 @@ export class DevicesMenu extends PanelMenu.Button {
 
         const daemonState = this.getDaemonState();
 
-        log(`daemon state: ${daemonState}, menu: ${this._menu.length}`);
+        console.log(`daemon state: ${daemonState}, menu: ${this._menu.length}`);
 
         this._extension.settings.addValueWatch('current-config-dir', 'config-dir', _ => {
             disconnectEvent();
@@ -275,11 +275,11 @@ export class DevicesMenu extends PanelMenu.Button {
         // @ts-ignore
         this._menuStateChangeId = this._menu.connect('open-state-changed', (_self, isMenuOpen) => {
             if (isMenuOpen) {
-                // log('Input Remapper Menu opened!');
+                // console.debug('Input Remapper Menu opened!');
                 this.refreshDeviceStates();
             }
         });
-        log(`registered menu state change handler: ${this._menuStateChangeId}`);
+        console.debug(`registered menu state change handler: ${this._menuStateChangeId}`);
     }
 
     private refreshDeviceStates() {
@@ -349,7 +349,7 @@ export class DevicesMenu extends PanelMenu.Button {
     private populateDeviceMenu(groupName: string, groupPresets: string[]) {
         let device = this._devices[groupName];
         if (!device) {
-            log(`device menu not found for ${groupName}, creating new device menu`);
+            console.warn(`device menu not found for ${groupName}, creating new device menu`);
             this.addDeviceMenu(groupName);
         }
 
@@ -398,5 +398,9 @@ export default class InputRemapperExtension extends Extension {
         this.settings.destroy();
         this.settings = undefined!;
         this.gSettings = undefined;
+        // kill any remaining timeouts
+        for (const timeout of activeTimeouts) {
+            GLib.Source.remove(timeout);
+        }
     }
 }

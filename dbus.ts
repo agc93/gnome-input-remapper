@@ -73,7 +73,7 @@ export class ProxyHandler {
 
 function getInputRemapperProxy(configDir: string) {
     configDir ??= FileHelpers.getDefaultConfigPath();
-    log(`getting input remapper proxy for config dir: ${configDir}`);
+    console.log(`getting input remapper proxy for config dir: ${configDir}`);
     const proxy = Gio.DBusProxy.makeProxyWrapper<InputRemapperDbusApi>(interfaceXml);
     const dBusProxy = proxy(Gio.DBus.system, 'inputremapper.Control', '/inputremapper/Control');
     dBusProxy.set_config_dirSync(configDir);

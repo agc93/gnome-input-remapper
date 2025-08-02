@@ -24,7 +24,7 @@ export class ExtensionSettings {
         this._configDir = settings.get_string('config-dir') ?? FileHelpers.getDefaultConfigPath();
         this.__configDirId = this._settings.connect('changed::config-dir', (settings: Gio.Settings) => {
             this._configDir = settings.get_string('config-dir') ?? FileHelpers.getDefaultConfigPath();
-            log(`new value of config-dir: ${this._configDir}`);
+            console.log(`new value of config-dir: ${this._configDir}`);
         })
         this._presetActionsEnabled = this._settings.get_boolean('enable-preset-actions')
             ?? this._settings.get_default_value('enable-preset-actions')?.get_boolean()
@@ -50,13 +50,13 @@ export class ExtensionSettings {
     }
 
     addValueWatch<T>(id: string, settingsKey: string, callback: (value: T) => void, transformer: (settings: Gio.Settings, key: string) => T) {
-        log(`adding settings watch ${id} for ${settingsKey}`);
+        console.log(`adding settings watch ${id} for ${settingsKey}`);
         if (!this._signals[settingsKey]) {
             this._signals[settingsKey] = {};
         }
         this._signals[settingsKey][id] = this._settings.connect('changed::' + settingsKey, (settings: Gio.Settings) => {
             const value = transformer(settings, settingsKey);
-            // log(`got changed::${settingsKey} signal, invoking ${id} callback with value: ${value}`);
+            // console.debug(`got changed::${settingsKey} signal, invoking ${id} callback with value: ${value}`);
             callback(value);
         });
     }
@@ -79,7 +79,7 @@ export class ExtensionSettings {
         for (const [settingsKey, signals] of Object.entries(this._signals)) {
             for (const [id, signalId] of Object.entries(signals)) {
                 this._settings.disconnect(signalId);
-                // log(`disconnected signal ${id} for ${settingsKey}`);
+                // console.log(`disconnected signal ${id} for ${settingsKey}`);
             }
         }
         this._settings.disconnect(this.__configDirId);

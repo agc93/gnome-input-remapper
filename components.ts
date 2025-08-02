@@ -44,7 +44,7 @@ export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
 
     constructor(key: string, label: string, settings: ExtensionSettings) {
         super({style_class: 'menu-item preset-menu-item'});
-        // log(`creating preset menu item: ${key}`);
+        // console.debug(`creating preset menu item: ${key}`);
 
         this._proxy = new ProxyHandler(settings);
 
@@ -97,9 +97,9 @@ export class PresetMenuItem extends PopupMenu.PopupBaseMenuItem {
     startPreset(event?: any) {
         try {
             const result = this._proxy.proxy.start_injectingSync(this.deviceName, this.presetName);
-            // log(`got response: ${result}`);
+            // console.debug(`got response: ${result}`);
             const state = this._proxy.proxy.get_stateSync(this.deviceName);
-            // log(`got device state: ${state}`);
+            // console.debug(`got device state: ${state}`);
             const presetStarted = result && (state.includes('RUNNING') || state.includes('STARTING'));
             if (presetStarted) this.emit('preset-start', event, state[0]);
         } catch (e) {

@@ -20,7 +20,7 @@ export default class FileHelpers {
             while ((fileInfo = enumerator.next_file(null)) !== null) {
                 if (fileInfo.get_file_type() === Gio.FileType.DIRECTORY) {
                     const fileName = fileInfo.get_name();
-                    log(`Found directory: ${fileName}`);
+                    console.log(`Found Input Remapper device directory: ${fileName}`);
                     directories.push(GLib.build_filenamev([presetsPath, fileName]));
                 }
             }
@@ -79,13 +79,21 @@ export default class FileHelpers {
         }
     }
 
-    static runAfter(seconds: number, callback: () => void|boolean) {
-        return GLib.timeout_add(GLib.PRIORITY_DEFAULT, seconds*1000, () => {
-            const result = callback();
-            return result ? result : GLib.SOURCE_REMOVE;
+    static runAfter(seconds: number, callback: () => void) {
+
+        const timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, seconds*1000, () => {
+            callback();
+            if (activeTimeouts.includes(timeout)) {
+                activeTimeouts = activeTimeouts.filter(t => t != timeout);
+            }
+            return GLib.SOURCE_REMOVE;
         }, null);
+        activeTimeouts.push(timeout);
+        return timeout;
     }
 }
+
+export let activeTimeouts: number[] = [];
 
 export const runAfter = FileHelpers.runAfter;
 
